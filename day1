@@ -1,0 +1,9 @@
+--name: Install Nginx on pathnex server
+  host: all
+  become: yes
+  
+  tasks:
+  -name: Install nginx
+  yum:
+   name: ngnix
+   status: present
