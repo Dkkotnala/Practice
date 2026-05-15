@@ -1,0 +1,137 @@
+#Ansible
+
+- name: Create dkotnala user
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Create user dkotnala-admin
+      user:
+        name: dkotnala-admin
+        shell: /bin/bash
+
+
+-------------------------------------
+#terraform
+
+
+provider "aws"{
+  region = "us-east-1"
+}
+
+  resource "aws_security_group" "dkotnalaSG"{
+    name        = "dkotnalaSG"
+    description = "dkotnala SG for SSH"
+
+  igress {
+    from_port   = 22
+    to_port     = 22
+    protocol    ="tcp"
+    cidr_blocks =["0.0.0.0/0"]
+   }
+  }
+
+  resource "aws_instance" "dkotnala"{
+  ami                   ="ami-0abcd1234abcd1234"
+  instance_type          ="r6i.4xlarge"
+  vpc_security_group_ids = [aws_security_group.dkotnalaSG.id]
+
+  tags= {
+  Name = "dkotnala-EC2"
+  }
+}
+
+#------------------------------
+
+#kubernetes - Add Enviroment Variable
+
+apiVersion: v1
+ kind: Pod 
+ metadata:
+    name: dkotnala-env-pod
+ spec:
+    containers:
+      - name: app
+        image: nginx
+        env:
+        - name: App_ENV
+          value: "production"
+
+
+#----------------------------
+
+#!/bin/bash
+FILE="/tmp/dkotnala.txt"
+
+if [ -f "$FILE" ]; then
+  echo "FILE exists"
+else
+  echo "File does not exits"
+fi    
+
+
+#--------------------
+
+# NodeJS Build
+## 🔹 Jenkins Pipeline — NodeJS Build
+
+pipeline{
+    agent any
+    tools {
+        nojejs 'NodeJS-16'
+    }
+  stages{
+      stage('checkout') {
+      steps{
+          git url: 'https://github.com/Pathnex/sample-node-app.git'
+      }
+    }
+  stage('install Dependencies') {
+      steps{
+        sh 'npm install'
+      }
+   }   
+  stage('Run Tests') {
+      steps{
+        sh 'npm test'
+      }
+    }
+  stage('Build') {
+      steps{
+        sh 'npm run build'
+      }
+    }
+  }
+ }
+
+
+ ##Github CI - NodeJS Build
+
+ Stages:
+    - install
+    - test
+    - build
+
+
+  node-install:
+   stage: install
+   image: node:16
+   script:
+     - git clone https://github.com/Pathnex/sample-node-app.git
+     - cd sample-node-app
+     - npm install
+
+  node-test:
+    stage: test
+    image: node:16
+    script:
+      - cd sample-node-app
+      - npm test
+
+  node-build:
+    stage: build
+    image: node:16
+    script:
+      - cd sample-node-app
+      - npm run build
+
