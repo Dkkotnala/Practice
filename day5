@@ -1,0 +1,95 @@
+#Ansible
+
+- name: Manage Nginx
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Update config file
+      copy:
+        src: index.html
+        dest: /usr/share/ngnix/html/index.html
+      notify: Restart Ngnix
+
+  handless:
+    - name: Restart Ngnix
+      service:
+         name:  nginx
+         state: restarted
+
+#----------------------------------  
+
+## terraform 
+
+resource "aws_instance" "dkotnala"
+  ami             = "ami-0abcd1234abcd1234"
+  instance_type   = "c6a.12xlarge"  
+
+  user_data = <<EOF
+#!/bin/bash
+yum install -y httpd
+systemctl start httpd
+EOF
+
+tags = {
+  Name = "dkotnala-EC2"
+ }
+}
+
+#---------------------------------
+
+#kuberenetes
+apiVersion: v1
+kind: pod
+metadata: 
+  name: dkotnala-limited-pod
+spec:
+  containers:
+  - name: app
+    image: ngnix
+    resource: 
+      limits:
+        memory: "256Mi"
+        cpu: "500m"
+
+#-----------------------------
+
+#jenkin pipeline
+
+pipeline{
+  agent any
+  environment {
+    INSTITUDE_NAME = "dkotnala"
+  }
+stages {
+    stage('print') {
+      steps {
+        sh 'echo "Welcome to $INSTITUDE_NAME Devops training"'
+      }
+  }
+    stage('Build'){
+      steps{
+        sh 'mvn clean package -Dinstitute.name=$INSTITUDE_NAME'
+      }
+    }
+  }
+} 
+
+
+#------------------------
+#Github CLI
+
+stages: 
+ - build
+
+variable:
+  INSTITUDE_NAME: "dkotnala"
+
+build:
+  stage: build
+  image: maven:3.8.1-jdk-17
+  script:
+    - git clone https://github.com/Pathnex/sample-java-app.git
+    - cd sample-java-app
+    - echo "Welcome to $INSTITUTE_NAME DevOps Training"  
+    - mvn clean package -Dinstitute.name=$INSTITUTE_NAME
