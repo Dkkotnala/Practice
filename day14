@@ -1,0 +1,179 @@
+#MINI PROJECT
+
+#terraform
+
+
+provider "aws" {
+  region = "us-east-1"
+}
+
+resource "aws_vpc" "dkkotnalaVPC" {
+  cidr_block = "10.10.0.0/16"
+
+  tags = {
+    Name = "dkkotnala-VPC"
+  }
+}
+
+resource "aws_subnet" "dkkotnalaSubnet" {
+  vpc_id                  = aws_vpc.dkkotnalaVPC.id
+  cidr_block              = "10.10.1.0/24"
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "dkkotnala-Subnet"
+  }
+}
+
+resource "aws_internet_gateway" "dkkotnalaIGW" {
+  vpc_id = aws_vpc.dkkotnalaVPC.id
+
+  tags = {
+    Name = "dkkotnala-IGW"
+  }
+}
+
+resource "aws_route_table" "dkkotnalaRT" {
+  vpc_id = aws_vpc.dkkotnalaVPC.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.dkkotnalaIGW.id
+  }
+
+  tags = {
+    Name = "dkkotnala-RouteTable"
+  }
+}
+resource "aws_instance" "dkkotnalaServer" {
+  ami           = "ami-0abcd1234abcd1234"
+  instance_type = "r5.2xlarge"
+
+  tags = {
+    Name = "dkkotnala-Output-EC2"
+  }
+}
+
+#ansible
+
+- name: Install Nginx on dkkotnala server
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Install nginx
+      yum:
+        name: nginx
+        state: present
+
+  - name: Deploy HTML file
+      copy:
+        content: |
+          <html>
+          <head>
+              <title>Welcome</title>
+          </head>
+          <body>
+              <h1>Nginx Installed Successfully using Ansible</h1>
+          </body>
+          </html>
+
+
+#bash
+
+#!/bin/bash
+
+CPU=$(top -bn1 | grep "Cpu(s)" | awk '{print $2 + $4}')
+MEM=$(free -h | awk '/Mem:/ {print $3 "/" $2}')
+DISK=$(df -h / | awk 'NR==2 {print $5}')
+
+echo "CPU Usage: $CPU%"
+echo "Memory Usage: $MEM"
+echo "Disk Usage: $DISK"
+
+
+#Kubernetes
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: nginx
+
+  template:
+    metadata:
+      labels:
+        app: nginx
+
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+
+        ports:
+        - containerPort: 80
+
+
+
+#Service---
+
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+
+spec:
+  selector:
+    app: nginx
+
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+
+  type: NodePort
+
+#Jenkins Pipeline
+
+pipeline {
+    agent any
+    environment {
+      INSTITUTE_NAME = "Pathnex"
+    }
+    triggers {
+      cron('H 2 * * *') // every day at 2 AM
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+              git url: 'https://github.com/Pathnex/sample-java-app.git'
+          }
+        }
+        stage('Build') {
+            steps {
+              sh 'mvn clean package'
+          }
+      }
+  }
+}
+
+
+#GitLab CI
+
+stages:
+  - build
+
+build:
+  stage: build
+  image: maven:3.8.1-jdk-17
+  script:
+    - git clone https://github.com/Pathnex/sample-java-app.git
+    - cd sample-java-app
+    - mvn clean package
