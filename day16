@@ -1,0 +1,107 @@
+#Ansible
+
+
+#Terraform
+
+
+resource "aws_dynamodb_table" "dkkotnalaTable" {
+    name         = "dkkotnalaTraningTable"
+    biling_mode  = "PAY_PER_REQUEST"
+    hash_key     = "ID"
+
+    attribute {
+        name = "ID"
+        type = "S"
+    }
+
+    tags = {
+      Name = "dkkotnala-DDB"
+    }
+}
+
+
+#kubernetes
+
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: dkkotnala-db
+spec:
+  serviceName: "dkkotnala"
+  replicas: 2
+  selector:
+    matchLabels:
+      app: dkkotnala-db
+  template:
+    metadata:
+      labels:
+        app: dkkotnala-db
+    spec:
+      containers:
+        - name: db
+          image: mysql
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: "dkkotnala123"
+
+
+#shell Script
+
+#!/bin/bash
+
+SERVICE="sshd"
+
+if systemctl is-active --quiet $SERVICE; then
+  echo "$SERVICE is running"
+else
+  echo "$SERVICE is NOT running"
+fi
+
+
+#Jenkins
+
+pipeline {
+    agent any
+    environment {
+        INSTITUTE_NAME = "dkkotnala"
+    }
+    stages {
+        stage('Build') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+        stage('Promote') {
+            steps {
+                input message: "Promote artifacts to staging?"
+                sh 'echo "Promoting artifacts for $INSTITUTE_NAME"'
+            }
+        }
+    }
+}
+
+
+
+#GitLab CI
+
+stages:
+  - build
+  - promote
+
+build:
+  stage: build
+  image: maven:3.8.1-jdk-17
+  script:
+    - mvn clean package
+  artifacts:
+    paths:
+      - target/*.jar
+    expire_in: 1 week
+
+promote:
+  stage: promote
+  image: alpine:latest
+  script:
+    - echo "Promoting artifacts for dkkotnala"
+  when: manual
