@@ -1,0 +1,92 @@
+#Ansible
+
+-- name: create multiple dkkotnala users
+    hosts: all
+    become: yes
+
+    vars:
+      users:
+        - dev1
+        - dev2
+        - dev3
+    
+    tasks:
+       - name: Create users
+         user:
+           name: "{{ item }}"
+        state: present
+      loop: "{{ users }}"
+
+
+#Terraform Application Load Balancer
+
+recource "aws-lb" "dkkotnalalb"{
+    name                ="dkkotnala-alb"
+    load_balancer_type  ="application"
+    subnets             =[aws_subnets.dkkotnalasubnet.id]
+
+    tags = {
+        name = "dkkotnala-ALB"
+    }
+}
+
+#Kubernetes
+
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+    name: dkkotnala-namespace
+  spec:
+    repicas: 2
+    selector:
+        matchlabels:
+        app: dkkotnala
+    template:
+        metadata:
+        labels:
+        app: dkkotnala
+    spec:
+        containers:
+        - name: app
+          image: nginx
+
+
+#shell script
+#!/bin/bash
+
+ps aux --sort=-%men | head -n 6
+
+
+#jenkin
+
+pipeline {
+    agent any
+    parameters {
+        choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Deployment Environment')
+    }
+    environment {
+        INSTITUTE_NAME = "dkkotnala"
+    }
+    stages {
+        stage('Deploy') {
+            steps {
+                sh 'echo "Deploying $INSTITUTE_NAME application to $ENVIRONMENT"'
+            }
+        }
+    }
+}
+
+#GitLab
+
+stages:
+  - deploy
+
+variables:
+  INSTITUTE_NAME: "dkkotnala"
+  ENVIRONMENT: "staging"
+
+deploy:
+  stage: deploy
+  image: alpine:latest
+  script:
+    - echo "Deploying $INSTITUTE_NAME application to $ENVIRONMENT"
