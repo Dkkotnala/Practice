@@ -1,0 +1,106 @@
+#ansible
+
+- name: Show system facts for dkkotnala
+  hosts: all
+
+  tasks:
+    - name: Print OS info
+      debug:
+        var: ansible_facts['os_family']
+
+    - name: Print IP address
+      debug:
+        var: ansible_facts['default_ipv4']['address']
+
+
+
+#Terraform
+
+
+# variables.tf
+  variable "instance_type" {
+    default = "c6a.12xlarge"
+  }
+
+# main.tf
+  resource "aws_instance" "dkkotnalaServer" {
+   ami           = "ami-0abcd1234abcd1234"
+    instance_type = var.instance_type
+  }
+
+# output
+  output "dkkotnala_ip" {
+   value = aws_instance.dkkotnalaServer.public_ip
+  }
+
+
+#Kubernetes
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dkkotnala-affinity
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: disktype
+                operator: In
+                values:
+                  - ssd
+  containers:
+    - name: web
+      image: nginx
+
+#Shell Script
+
+
+#!/bin/bash
+
+tar -czf /backup/dkkotnala-logs-$(date +%F).tar.gz /var/log/
+echo "Logs archived."
+
+
+#Jenkins
+
+
+pipeline {
+    agent any
+    environment {
+        INSTITUTE_NAME = "dkkotnala"
+    }
+    stages {
+        stage('Deploy') {
+            steps {
+                script {
+                    try {
+                        sh 'echo "Deploying $INSTITUTE_NAME application..."'
+                        sh 'exit 1' // simulate failure
+                    } catch (Exception e) {
+                        echo "Deployment failed. Rolling back $INSTITUTE_NAME application..."
+                    }
+              }
+          }
+      }
+    }
+}
+
+#GitLab
+
+
+stages:
+  - deploy
+
+variables:
+  INSTITUTE_NAME: "dkkotnala"
+
+deploy:
+  stage: deploy
+  image: alpine:latest
+  script:
+    - echo "Deploying $INSTITUTE_NAME application..."
+    - exit 1
+  after_script:
+    - echo "Deployment failed. Rolling back $INSTITUTE_NAME application..."
