@@ -1,0 +1,107 @@
+#ansible
+
+--name: create user with content
+    hosts: all
+    become: yes
+
+--name: create pathnex user
+    user:
+       name: devuser
+       comment: "pathnex dev user"
+
+
+#terraform
+
+resource "aws_eip" "dkkotnalaEIP"{
+    instance = aws_instance.dkkotnalaEC2.id
+
+    tags = {
+       Name = "dkkotnala-EIP"
+    }
+}
+
+#kubernetes
+
+apiVersion: autoScaling/v2
+kind: HorizontalPodScaling
+metadata:
+   name: dkkotnala-hpa 
+Spec:
+    scaleTragetRef:
+    apiVersion: app/v1
+    Kind: Deployment
+    name: dkkotnala-Deploy
+   minreplicas:2
+   maxreplicas:6
+   metrics:
+        - type: Resource
+          resource:
+            type: cpu
+            target:
+            type: Utilization
+            averageUtilization:50
+
+
+#shell script
+
+#!/bin/bash
+PID=$(ps aux --sort=%cpu | awk 'NR==2{print $2}')
+
+echo "Killing process: $PID"
+kill -9 $PID
+
+
+
+#Jenkins
+
+pipeline {
+    agent any
+    environment {
+        INSTITUTE_NAME = "Pathnex"
+        TEAM = "DevOps"
+        ENV = "staging"
+        PROJECT = "WebApp"
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                git url: 'https://github.com/Pathnex/sample-java-app.git'
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                docker build -t pathnex/webapp:${ENV}-${BUILD_NUMBER} \
+                --label "INSTITUTE_NAME=$INSTITUTE_NAME" \
+                --label "TEAM=$TEAM" \
+                --label "ENV=$ENV" \
+                --label "PROJECT=$PROJECT" .
+                '''
+            }
+        }
+    }
+}
+
+
+#GitLab CI
+
+stages:
+  - docker-build
+
+variables:
+  INSTITUTE_NAME: "Pathnex"
+  TEAM: "DevOps"
+  ENV: "staging"
+  PROJECT: "WebApp"
+
+docker-build:
+  stage: docker-build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker build -t pathnex/webapp:${ENV}-${CI_PIPELINE_ID} \
+      --label "INSTITUTE_NAME=$INSTITUTE_NAME" \
+      --label "TEAM=$TEAM" \
+      --label "ENV=$ENV" \
+      --label "PROJECT=$PROJECT" .
