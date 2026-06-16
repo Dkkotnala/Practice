@@ -1,0 +1,76 @@
+#ansible
+
+- name Install ngnix
+  hosts all
+  tasks:
+    - name: missing
+      yum:
+      name: ngnix
+      state present
+
+
+#terraform
+
+resource "aws" "BadBucket" {
+bucket = pathnex-bucket
+acl public-read
+}
+
+
+#kubernetes
+
+apiVersion v1
+kind pod 
+metadata:
+  name: brokepod
+spec:
+  containers:
+  -name app
+  image ngnix
+
+#Rollback Strategies
+
+#Jenkins pipeline
+
+pipeline {
+  agent any
+  environment {
+       INSTITUTE_NAME = "pathnex"
+       TEAM = "DevOps"
+       ENV = "prod"
+  }
+  stages {
+    stage('Deploy'){
+      steps {
+        script {
+          try {
+            sh 'echo "Deploying $INSTITUTE_NAME app in $ENV for $TEAM"'
+            sh 'exit 1' // simulate failure
+            } catch (Exception e) {
+              echo "Deployment failed. Rolling back $INSTITUTE_NAME app in $ENV"
+            }
+          }
+        }
+      }
+    
+  }
+}
+
+#GitLab CI
+
+stage :
+  - deploy 
+
+variables:
+  INSTITUTE_NAME: "pathnex"
+  TEAM = "DevOps"
+  ENV = "prod"
+
+deploy
+  stage: deploy
+  image: alpine:latest
+  script:
+    - echo "Deploying $INSTITUTE_NAME app in $ENV for $TEAM"
+    - exit1
+  after_script:
+    - echo "Deployment failed. Rolling back $INSTITUTE_NAME app in $ENV"
