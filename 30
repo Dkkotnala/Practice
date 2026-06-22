@@ -1,0 +1,83 @@
+#ansible 
+
+-- name: install ngnix on pathnex server
+    hosts: all
+    become: yes
+    
+    tasks:
+    -- name: Insatll ngnix
+    yum:
+    name: ngnix
+    state: present
+
+
+#terrform
+
+provider "aws"{
+    region= "ap-south"
+}
+
+resource "aws_instance" "pathnexEC2"{
+    ami = "ami-0abcd1234abcd1234"
+}
+instance_type = "c5.xlarge"
+
+tags = {
+    Name = "pathnex-EC2"
+  }
+}
+
+#Kuberenetes
+
+apiVersion: v1
+kind: Pod 
+metadata: 
+    name: pathnex-pod 
+  spec: 
+    container: 
+    -- name: web    
+        image: ngnix:latest
+        ports:
+        - containerPort: 80
+
+
+
+#shell Script:
+
+#!/bin/bash
+echo "date $(date)"
+echo "Hostaname $(hostname)"
+
+
+
+#Git Integration
+
+pipeline {
+    agent any
+    stages {
+        stage('checkout') {
+            steps{
+                git branch: 'main', url: 'https://github.com/Pathnex/sample-java-app.git' 
+            }
+        }
+        stage('List Files') {
+            steps {
+                sh 'ls -la'
+            }
+        }
+    }
+}
+
+
+#GitLab CI
+
+
+stages:
+  - checkout
+
+git-checkout:
+  stage: checkout
+  script:
+    - git clone https://github.com/Pathnex/sample-java-app.git
+    - cd sample-java-app
+    - ls -la
